@@ -71,14 +71,4 @@ def custom_test():
 if __name__ == "__main__":
     # sigma_tests()
     # mi_lambda_tests()
-    # custom_test()
-    evolution_strategy(
-        128,
-        512,
-        3,
-        1000,
-        [15, 15],
-        [15, 15],
-        max=False,
-        chart=True
-    )
+    custom_test()
