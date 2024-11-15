@@ -1,6 +1,8 @@
 import random
 
-# random.seed(3)  # For final results set seed as your student's id modulo 42
+from numpy.ma.core import left_shift
+
+random.seed(8)  # For final results set seed as your student's id modulo 42
 
 
 class RandomAgent:
@@ -71,10 +73,31 @@ class MinMaxAgent:
         self.max_depth = max_depth
 
     def act(self, vector: list):
-        raise NotImplementedError
+        _, best_move = self._minmax(vector, False, self.max_depth)
+        if best_move == 0:
+            self.numbers.append(vector[0])
+            return vector[1:]
+        self.numbers.append(vector[-1])
+        return vector[:-1]
 
     def _minmax(self, vector, is_maximizing, depth):
-        raise NotImplementedError
+        if depth == 0 or len(vector) == 1:
+            if is_maximizing:
+                return max(vector[-1], vector[0]), -1 if vector[-1] > vector[0] else 0
+            return -max(vector[-1], vector[0]), -1 if vector[-1] > vector[0] else 0
+
+        if is_maximizing:
+            left_score, _ = self._minmax(vector[1:], False, depth-1)
+            right_score, _ = self._minmax(vector[:-1], False, depth-1)
+            left_score += vector[0]
+            right_score += vector[-1]
+            return max(left_score, right_score), -1 if right_score > left_score else 0
+        else:
+            left_score, _ = self._minmax(vector[1:], True, depth-1)
+            right_score, _ = self._minmax(vector[:-1], True, depth-1)
+            left_score -= vector[0]
+            right_score -= vector[-1]
+            return min(left_score, right_score), -1 if right_score < left_score else 0
 
 
 def run_game(vector, first_agent, second_agent):
