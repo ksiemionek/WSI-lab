@@ -1,10 +1,8 @@
 import random
 import time
-
 import numpy as np
 from matplotlib import pyplot as plt
-from sympy.concrete.guess import find_simple_recurrence
-from sympy.polys.polyoptions import Greedy
+
 
 random.seed(8)  # For final results set seed as your student's id modulo 42
 
@@ -120,6 +118,7 @@ def main():
     print(f"First agent: {sum(first_agent.numbers)} Second agent: {sum(second_agent.numbers)}\n"
           f"First agent: {first_agent.numbers}\n"
           f"Second agent: {second_agent.numbers}")
+
 
 def run_games(agent1, agent2, games=1000, vector_size=15):
     results1 = []
