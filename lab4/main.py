@@ -5,7 +5,9 @@ import pygame
 import time
 
 from food import Food
+from lab4.model import LogisticRegressionModel
 from model import game_state_to_data_sample
+from model import files_to_data
 from snake import Snake, Direction
 
 
@@ -19,12 +21,12 @@ def main():
     snake = Snake(block_size, bounds)
     food = Food(block_size, bounds, lifetime=100)
 
-    agent = HumanAgent(block_size, bounds)  # Once your agent is good to go, change this line
+    agent = BehavioralCloningAgent(block_size, bounds)  # Once your agent is good to go, change this line
     scores = []
     run = True
     pygame.time.delay(1000)
     while run:
-        pygame.time.delay(80)  # Adjust game speed, decrease to test your agent and model quickly
+        pygame.time.delay(20)  # Adjust game speed, decrease to test your agent and model quickly
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -43,7 +45,7 @@ def main():
 
         if snake.is_wall_collision() or snake.is_tail_collision():
             pygame.display.update()
-            pygame.time.delay(300)
+            pygame.time.delay(200)
             scores.append(snake.length - 3)
             snake.respawn()
             food.respawn()
@@ -69,13 +71,13 @@ class HumanAgent:
     def act(self, game_state) -> Direction:
         keys = pygame.key.get_pressed()
         action = game_state["snake_direction"]
-        if keys[pygame.K_LEFT]:
+        if keys[pygame.K_a]:
             action = Direction.LEFT
-        elif keys[pygame.K_RIGHT]:
+        elif keys[pygame.K_d]:
             action = Direction.RIGHT
-        elif keys[pygame.K_UP]:
+        elif keys[pygame.K_w]:
             action = Direction.UP
-        elif keys[pygame.K_DOWN]:
+        elif keys[pygame.K_s]:
             action = Direction.DOWN
 
         self.data.append((copy.deepcopy(game_state), action))
@@ -83,21 +85,29 @@ class HumanAgent:
 
     def dump_data(self):
         os.makedirs("data", exist_ok=True)
-        current_time = time.strftime('%Y-%m-%d_%H:%M:%S')
+        current_time = time.strftime('%Y-%m-%d_%H_%M_%S')
         with open(f"data/{current_time}.pickle", 'wb') as f:
             pickle.dump({"block_size": self.block_size,
                          "bounds": self.bounds,
                          "data": self.data[:-10]}, f)  # Last 10 frames are when you press exit, so they are bad, skip them
 
-
 class BehavioralCloningAgent:
-    def __init__(self):
-        raise NotImplementedError()
+    def __init__(self, block_size, bounds):
+        self.block_size = block_size
+        self.bounds = bounds
+        self.model = LogisticRegressionModel(0.1, 20000)
+
+        X, y = files_to_data('dzik')
+
+        print(X.shape)
+
+        self.model.fit(X, y)
 
     def act(self, game_state) -> Direction:
         """ Calculate data sample attributes from game_state and run the trained model to predict snake's action/direction"""
-        data_sample = game_state_to_data_sample(game_state)
-        raise NotImplementedError()
+        game_state_features = game_state_to_data_sample(game_state, self.block_size, self.bounds)
+        move = self.model.predict(game_state_features)
+        return Direction(move)
 
     def dump_data(self):
         pass
