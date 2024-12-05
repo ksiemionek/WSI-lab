@@ -3,10 +3,9 @@ import numpy as np
 import os
 
 from snake import Direction
-from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
-from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
 
 
 """Implement your model, training code and other utilities here. Please note, you can generate multiple 
@@ -79,10 +78,10 @@ def game_state_to_data_sample(game_state: dict, block_size, bounds):
         is_barrier(right, bounds, snake_body),
         is_barrier(down, bounds, snake_body),
         is_barrier(left, bounds, snake_body),
-        is_food(up, food_position),
-        is_food(right, food_position),
-        is_food(down, food_position),
-        is_food(left, food_position),
+        # is_food(up, food_position),
+        # is_food(right, food_position),
+        # is_food(down, food_position),
+        # is_food(left, food_position),
         direction.value == Direction.UP.value,
         direction.value == Direction.RIGHT.value,
         direction.value == Direction.DOWN.value,
@@ -158,18 +157,83 @@ class LogisticRegressionModel:
         return np.argmax(predictions, axis=0)
 
 
+def data_size_test():
+    X, y = files_to_data('test')
 
-if __name__ == "__main__":
-    X, y = files_to_data('data')
+    # print(X.shape)
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    model = LogisticRegressionModel(1, 3000)
+    train_sizes = [0.01, 0.1, 0.8]
 
-    model = LogisticRegressionModel(0.1, 10000)
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    print(f"Model Test Accuracy: {accuracy_score(y_test, y_pred)}")
+    for train_size in train_sizes:
+        X_train2, _, y_train2, _ = train_test_split(X_train, y_train, train_size=train_size)
+        model.fit(X_train2, y_train2)
+        print(f"{train_size * 100:.0f}% of data")
+        print(f"Model test accuracy: {accuracy_score(y_test, model.predict(X_test)) * 100:.2f}%")
+        print(f"Model train accuracy: {accuracy_score(y_train2, model.predict(X_train2)) * 100:.2f}%")
 
-    model = LogisticRegression()
     model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    print(f"RandomForest Test Accuracy: {accuracy_score(y_test, y_pred)}")
+    print(f"100% of data")
+    print(f"Model test accuracy: {accuracy_score(y_test, model.predict(X_test)) * 100:.2f}%")
+    print(f"Model train accuracy: {accuracy_score(y_train, model.predict(X_train)) * 100:.2f}%")
+
+
+def learning_rate_test():
+    X, y = files_to_data('test')
+
+    # print(X.shape)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    rates = [0.001, 0.01, 0.1, 0.5, 1]
+    train_scores = []
+    test_scores = []
+
+    for rate in rates:
+        model = LogisticRegressionModel(rate, 3000)
+        model.fit(X_train, y_train)
+        test_score = accuracy_score(y_test, model.predict(X_test))
+        train_score = accuracy_score(y_train, model.predict(X_train))
+        test_scores.append(test_score)
+        train_scores.append(train_score)
+        print(f"Learning rate = {rate}")
+        print(f"Model test accuracy: {test_score * 100:.2f}%")
+        print(f"Model train accuracy: {train_score * 100:.2f}%\n")
+
+    plt.plot(rates, train_scores, label="Train accuracy")
+    plt.plot(rates, test_scores, label="Test accuracy")
+    plt.xlabel("Learning rate")
+    plt.ylabel("Accuracy")
+    plt.legend()
+    plt.show()
+
+
+def iterations_test():
+    X, y = files_to_data('test')
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+
+    train_scores = []
+    test_scores = []
+
+    for i in range(0, 6000, 100):
+        model = model = LogisticRegressionModel(1, i)
+        model.fit(X_train, y_train)
+        test_score = accuracy_score(y_test, model.predict(X_test))
+        train_score = accuracy_score(y_train, model.predict(X_train))
+        test_scores.append(test_score)
+        train_scores.append(train_score)
+        print(i)
+
+
+    iterations = [i for i in range(0, 6000, 50)]
+    plt.plot(iterations, train_scores, label="Train accuracy")
+    plt.plot(iterations, test_scores, label="Test accuracy")
+    plt.xlabel("Learning rate")
+    plt.ylabel("Accuracy")
+    plt.legend()
+    plt.show()
+
+if __name__ == "__main__":
+    # data_size_test()
+    # learning_rate_test()
+    iterations_test()

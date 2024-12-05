@@ -1,6 +1,8 @@
 import copy
 import os
 import pickle
+
+import numpy as np
 import pygame
 import time
 
@@ -26,7 +28,7 @@ def main():
     run = True
     pygame.time.delay(1000)
     while run:
-        pygame.time.delay(20)  # Adjust game speed, decrease to test your agent and model quickly
+        pygame.time.delay(5)  # Adjust game speed, decrease to test your agent and model quickly
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -56,6 +58,7 @@ def main():
         pygame.display.update()
 
     print(f"Scores: {scores}")
+    print(f"Average score: {np.average(scores)}")
     agent.dump_data()
     pygame.quit()
 
@@ -95,9 +98,9 @@ class BehavioralCloningAgent:
     def __init__(self, block_size, bounds):
         self.block_size = block_size
         self.bounds = bounds
-        self.model = LogisticRegressionModel(0.1, 20000)
+        self.model = LogisticRegressionModel(1, 3000)
 
-        X, y = files_to_data('dzik')
+        X, y = files_to_data('test')
 
         print(X.shape)
 
