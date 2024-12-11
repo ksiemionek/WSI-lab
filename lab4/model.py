@@ -25,24 +25,6 @@ def is_food(position, food_position):
     return 1 if position == food_position else 0
 
 
-def food_distance_in_direction(snake_head, food_position, block_size, direction):
-    x, y = snake_head
-    food_x, food_y = food_position
-
-    # up
-    if direction == 0:
-        return max(0, y - food_y) / block_size
-    # right
-    elif direction == 1:
-        return max(0, food_x - x) / block_size
-    # down
-    elif direction == 2:
-        return max(0, food_y - y) / block_size
-    # left
-    else:
-        return max(0, x - food_x) / block_size
-
-
 def food_in_direction(snake_head, food_position, direction):
     x, y = snake_head
     food_x, food_y = food_position
@@ -78,18 +60,10 @@ def game_state_to_data_sample(game_state: dict, block_size, bounds):
         is_barrier(right, bounds, snake_body),
         is_barrier(down, bounds, snake_body),
         is_barrier(left, bounds, snake_body),
-        # is_food(up, food_position),
-        # is_food(right, food_position),
-        # is_food(down, food_position),
-        # is_food(left, food_position),
         direction.value == Direction.UP.value,
         direction.value == Direction.RIGHT.value,
         direction.value == Direction.DOWN.value,
         direction.value == Direction.LEFT.value,
-        # food_distance_in_direction(snake_head, food_position, block_size, 0),
-        # food_distance_in_direction(snake_head, food_position, block_size, 1),
-        # food_distance_in_direction(snake_head, food_position, block_size, 2),
-        # food_distance_in_direction(snake_head, food_position, block_size, 3)
         food_in_direction(snake_head, food_position, 0),
         food_in_direction(snake_head, food_position, 1),
         food_in_direction(snake_head, food_position, 2),
@@ -126,10 +100,6 @@ class LogisticRegressionModel:
         x = np.clip(z, -500, 500)
         return 1 / (1 + np.exp(-z))
 
-    def move_prob(self, move_values, weights, bias):
-        z = np.dot(weights, move_values) + bias
-        return self.sigmoid(z)
-
     def fit(self, X, y):
         num_samples, num_features = X.shape
         self.weights = np.zeros((4, num_features))
@@ -140,10 +110,9 @@ class LogisticRegressionModel:
                 labels = np.array([1 if label == i else 0 for label in y])
                 scores = np.dot(X, self.weights[i]) + self.bias[i]
                 predictions = self.sigmoid(scores)
-                error = predictions - labels
 
-                dw = (1 / num_samples) * np.dot(X.T, error)
-                db = (1 / num_samples) * np.sum(error)
+                dw = (1 / num_samples) * np.dot(X.T, (predictions - labels))
+                db = (1 / num_samples) * np.sum(predictions - labels)
 
                 self.weights[i] -= self.learning_rate * dw
                 self.bias[i] -= self.learning_rate * db
@@ -160,11 +129,9 @@ class LogisticRegressionModel:
 def data_size_test():
     X, y = files_to_data('test')
 
-    # print(X.shape)
-
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-    model = LogisticRegressionModel(1, 3000)
-    train_sizes = [0.01, 0.1, 0.8]
+    model = LogisticRegressionModel(0.3, 7000)
+    train_sizes = [0.01, 0.1]
 
     for train_size in train_sizes:
         X_train2, _, y_train2, _ = train_test_split(X_train, y_train, train_size=train_size)
@@ -182,10 +149,8 @@ def data_size_test():
 def learning_rate_test():
     X, y = files_to_data('test')
 
-    # print(X.shape)
-
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-    rates = [0.001, 0.01, 0.1, 0.5, 1]
+    rates = [0.01, 0.05, 0.1, 0.5, 1]
     train_scores = []
     test_scores = []
 
@@ -208,32 +173,32 @@ def learning_rate_test():
     plt.show()
 
 
-def iterations_test():
+def iter_lr_test():
     X, y = files_to_data('test')
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
-    train_scores = []
-    test_scores = []
+    rates = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    iterations = [100, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000]
 
-    for i in range(0, 6000, 100):
-        model = model = LogisticRegressionModel(1, i)
-        model.fit(X_train, y_train)
-        test_score = accuracy_score(y_test, model.predict(X_test))
-        train_score = accuracy_score(y_train, model.predict(X_train))
-        test_scores.append(test_score)
-        train_scores.append(train_score)
-        print(i)
+    diff = []
 
+    for rate in rates:
+        diff_rate = []
+        for iter in iterations:
+            model = LogisticRegressionModel(1, iter)
+            model.fit(X_train, y_train)
+            test_score = accuracy_score(y_test, model.predict(X_test))
+            train_score = accuracy_score(y_train, model.predict(X_train))
+            diff_rate.append(train_score - test_score)
+            print(iter)
+        diff.append(diff_rate)
 
-    iterations = [i for i in range(0, 6000, 50)]
-    plt.plot(iterations, train_scores, label="Train accuracy")
-    plt.plot(iterations, test_scores, label="Test accuracy")
-    plt.xlabel("Learning rate")
-    plt.ylabel("Accuracy")
+    for i in range(len(rates)):
+        plt.plot(iterations, diff[i], label="average score")
     plt.legend()
     plt.show()
 
+
 if __name__ == "__main__":
-    # data_size_test()
-    # learning_rate_test()
-    iterations_test()
+    data_size_test()
+    learning_rate_test()

@@ -6,6 +6,8 @@ import numpy as np
 import pygame
 import time
 
+from sklearn.model_selection import train_test_split
+
 from food import Food
 from lab4.model import LogisticRegressionModel
 from model import game_state_to_data_sample
@@ -28,7 +30,7 @@ def main():
     run = True
     pygame.time.delay(1000)
     while run:
-        pygame.time.delay(5)  # Adjust game speed, decrease to test your agent and model quickly
+        pygame.time.delay(25)  # Adjust game speed, decrease to test your agent and model quickly
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -47,7 +49,7 @@ def main():
 
         if snake.is_wall_collision() or snake.is_tail_collision():
             pygame.display.update()
-            pygame.time.delay(200)
+            pygame.time.delay(300)
             scores.append(snake.length - 3)
             snake.respawn()
             food.respawn()
@@ -98,13 +100,12 @@ class BehavioralCloningAgent:
     def __init__(self, block_size, bounds):
         self.block_size = block_size
         self.bounds = bounds
-        self.model = LogisticRegressionModel(1, 3000)
+        self.model = LogisticRegressionModel(0.3, 6000)
 
         X, y = files_to_data('test')
 
-        print(X.shape)
-
-        self.model.fit(X, y)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+        self.model.fit(X_train, y_train)
 
     def act(self, game_state) -> Direction:
         """ Calculate data sample attributes from game_state and run the trained model to predict snake's action/direction"""
