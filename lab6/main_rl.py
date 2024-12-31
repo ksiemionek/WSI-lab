@@ -7,9 +7,10 @@ import numpy as np
 from food import Food
 from snake import Snake, Direction
 
-train = True
 
-def main():
+def train_and_test(epsilon, move, apple, death, train=True):
+    filename = f"q_eps{epsilon}:move{move}:apple{apple}:death{death}.tensor"
+
     pygame.init()
     bounds = (300, 300)
     window = pygame.display.set_mode(bounds)
@@ -20,7 +21,7 @@ def main():
     food = Food(block_size, bounds)
 
     if train:
-        agent = QLearningAgent(block_size, bounds, epsilon=0.1, discount=0.99, is_training=True)
+        agent = QLearningAgent(block_size, bounds, epsilon=epsilon, discount=0.99, is_training=True)
     else:
         agent = QLearningAgent(
             block_size,
@@ -28,7 +29,7 @@ def main():
             epsilon=0,
             discount=0.99,
             is_training=False,
-            load_qfunction_path="q_tensor_epsilon_0.1.tensor1.1:15:40"
+            load_qfunction_path=filename
         )
 
     scores = []
@@ -49,11 +50,11 @@ def main():
                       "snake_direction": snake.direction}
 
         direction = agent.act(game_state, reward, is_terminal)
-        reward = -1.1
+        reward = -move
         is_terminal = False
         snake.turn(direction)
         snake.move()
-        reward += snake.check_for_food(food) * 15
+        reward += snake.check_for_food(food) * apple
         food.update()
 
         if snake.is_wall_collision() or snake.is_tail_collision():
@@ -63,7 +64,7 @@ def main():
             snake.respawn()
             food.respawn()
             episode += 1
-            reward -= 40.0
+            reward -= death
             is_terminal = True
 
         window.fill((0, 0, 0))
@@ -73,24 +74,28 @@ def main():
 
     if train:
         plot_results(scores)
-        agent.save_qfunction("q_tensor_epsilon_0.1.tensor1.1:15:40")
+        agent.save_qfunction(filename)
 
     print(f"Scores: {scores}")
     print(f"Average score: {np.average(scores)}")
 
     pygame.quit()
 
+    if train:
+        for i in range(10):
+            train_and_test(epsilon, move, apple, death, train=False)
+
 
 def plot_results(scores):
     episodes = list(range(len(scores)))
     avg_scores = [sum(scores[:i+1]) / (i+1) for i in range(len(scores))]
 
-    plt.figure(figsize=(10, 6))
-    plt.plot(episodes, scores, label="Punkty w epizodach")
-    plt.plot(episodes, avg_scores, label="Średnia punktów")
-    plt.title("Wyniki agenta w grze Snake")
-    plt.xlabel("Epizod")
-    plt.ylabel("Punkty")
+    plt.figure(figsize=(9, 6))
+    plt.plot(episodes, scores, label="Episode score")
+    plt.plot(episodes, avg_scores, label="Average score")
+    plt.title("Agent's training performance")
+    plt.xlabel("Episode")
+    plt.ylabel("Score")
     plt.legend()
     plt.grid(True)
     plt.show()
@@ -168,7 +173,4 @@ class QLearningAgent:
 
 
 if __name__ == "__main__":
-    main()
-    train = False
-    for i in range(10):
-        main()
+    train_and_test(0.1, 1.0, 10.0, 25.0, train=True)
