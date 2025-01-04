@@ -8,8 +8,8 @@ from food import Food
 from snake import Snake, Direction
 
 
-def train_and_test(epsilon, move, apple, death, train=True):
-    filename = f"q_eps{epsilon}:move{move}:apple{apple}:death{death}.tensor"
+def train_and_test(epsilon, move, apple, death, version, train=True):
+    filename = f"q_eps{epsilon}:move{move}:apple{apple}:death{death}:v{version}.tensor"
 
     pygame.init()
     bounds = (300, 300)
@@ -73,27 +73,32 @@ def train_and_test(epsilon, move, apple, death, train=True):
         pygame.display.update()
 
     if train:
-        plot_results(scores)
+        plot_results(scores, epsilon, move, apple, death)
         agent.save_qfunction(filename)
 
-    print(f"Scores: {scores}")
-    print(f"Average score: {np.average(scores)}")
+        print(f"Scores: {scores}")
+        print(f"Average score (training, version {version}): {np.average(scores)}")
+    else:
+        print(f"Average score (testing): {np.average(scores)}")
 
     pygame.quit()
 
     if train:
-        for i in range(10):
-            train_and_test(epsilon, move, apple, death, train=False)
+        for _ in range(10):
+            train_and_test(epsilon, move, apple, death, version, train=False)
 
 
-def plot_results(scores):
+def plot_results(scores, epsilon, move, apple, death):
     episodes = list(range(len(scores)))
-    avg_scores = [sum(scores[:i+1]) / (i+1) for i in range(len(scores))]
+    avg_scores = [sum(scores[:i + 1]) / (i + 1) for i in range(len(scores))]
 
     plt.figure(figsize=(9, 6))
     plt.plot(episodes, scores, label="Episode score")
     plt.plot(episodes, avg_scores, label="Average score")
-    plt.title("Agent's training performance")
+
+    title = (f"Agent's Training Performance\n"
+             f"(ε={epsilon}, move={move}, apple={apple}, death={death})")
+    plt.title(title)
     plt.xlabel("Episode")
     plt.ylabel("Score")
     plt.legend()
@@ -121,7 +126,7 @@ class QLearningAgent:
     def act(self, game_state: dict, reward: float, is_terminal: bool) -> Direction:
         if self.is_training:
             return self.act_train(game_state, reward, is_terminal)
-        return self.act_test(game_state, reward, is_terminal)
+        return self.act_test(game_state)
 
     def act_train(self, game_state: dict, reward: float, is_terminal: bool) -> Direction:
         new_obs = self.game_state_to_observation(game_state)
@@ -129,8 +134,8 @@ class QLearningAgent:
         if self.prev_obs is not None:
             prev_q = self.Q[self.prev_obs][self.prev_action]
             max_future_q = torch.max(self.Q[new_obs])
-            self.Q[self.prev_obs][self.prev_action] = prev_q +self.learning_rate * (
-                    reward + self.discount * max_future_q - prev_q
+            self.Q[self.prev_obs][self.prev_action] = (
+                    prev_q + self.learning_rate * (reward + self.discount * max_future_q - prev_q)
             )
 
         if random.random() < self.epsilon:
@@ -138,8 +143,12 @@ class QLearningAgent:
         else:
             new_action = int(torch.argmax(self.Q[new_obs]))
 
-        self.prev_obs = new_obs
-        self.prev_action = new_action
+        if is_terminal:
+            self.prev_obs = None
+            self.prev_action = None
+        else:
+            self.prev_obs = new_obs
+            self.prev_action = new_action
 
         return Direction(int(new_action))
 
@@ -160,7 +169,7 @@ class QLearningAgent:
                 game_state["snake_direction"].value                                     # snake_direction    (4)
                )
 
-    def act_test(self, game_state: dict, reward: float, is_terminal: bool) -> Direction:
+    def act_test(self, game_state: dict) -> Direction:
         new_obs = self.game_state_to_observation(game_state)
         new_action = int(torch.argmax(self.Q[new_obs]))
         return Direction(int(new_action))
@@ -173,4 +182,4 @@ class QLearningAgent:
 
 
 if __name__ == "__main__":
-    train_and_test(0.1, 1.0, 10.0, 25.0, train=True)
+    train_and_test(0.01, 0.1, 1.2, 2.5, 4, train=True)
