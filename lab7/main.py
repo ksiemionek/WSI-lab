@@ -4,10 +4,16 @@ from sklearn.model_selection import KFold
 from sklearn.metrics import accuracy_score
 
 
-class NaiveBayes:
-    def fit(self, X, y):
-        n_samples, n_features = X.shape
-        self._classes = np.unique(y)
+class NaiveBayesClassifier:
+    def __init__(self):
+        self._classes = None
+        self._mean = None
+        self._var = None
+        self._priors = None
+
+    def fit(self, X_train, y_train):
+        n_samples, n_features = X_train.shape
+        self._classes = np.unique(y_train)
         n_classes = len(self._classes)
 
         self._mean = np.zeros((n_classes, n_features), dtype=np.float64)
@@ -15,27 +21,27 @@ class NaiveBayes:
         self._priors = np.zeros(n_classes, dtype=np.float64)
 
         for idx, c in enumerate(self._classes):
-            X_c = X[y == c]
-            self._mean[idx, :] = X_c.mean(axis=0)
-            self._var[idx, :] = X_c.var(axis=0)
-            self._priors[idx] = X_c.shape[0] / float(n_samples)
+            X_class = X_train[y_train == c]
+            self._mean[idx, :] = X_class.mean(axis=0)
+            self._var[idx, :] = X_class.var(axis=0)
+            self._priors[idx] = X_class.shape[0] / float(n_samples)
 
-    def predict(self, X):
-        y_pred = [self._predict(x) for x in X.values]
-        return np.array(y_pred)
+    def predict(self, X_test):
+        predictions = [self._predict(x) for x in X_test.values]
+        return np.array(predictions)
 
     def _predict(self, x):
         posteriors = []
 
         for idx, c in enumerate(self._classes):
             prior = np.log(self._priors[idx])
-            posterior = np.sum(np.log(self._pdf(idx, x)))
+            posterior = np.sum(np.log(self.probability_density(idx, x)))
             posterior = posterior + prior
             posteriors.append(posterior)
 
         return self._classes[np.argmax(posteriors)]
 
-    def _pdf(self, class_idx, x):
+    def probability_density (self, class_idx, x):
         x = np.array(x, dtype=np.float64)
         mean = self._mean[class_idx]
         var = self._var[class_idx]
@@ -53,33 +59,42 @@ def embarked_to_num(embarked):
         return 2
 
 
-def key_test(features):
-    data = pd.read_csv("train.csv", header=0)
-    data = data[features + ['Survived']]
+def age_to_category(age):
+    if age < 18:
+        return 0  # child
+    elif age < 60:
+        return 1  # adult
+    else:
+        return 2  # senior
 
+
+def preprocess_data(data):
     if 'Embarked' in data.columns:
         data['Embarked'] = data['Embarked'].apply(embarked_to_num)
+    if 'Age' in data.columns:
+        data['Age'] = data['Age'].fillna(data['Age'].mean())
+        data['Age'] = data['Age'].apply(age_to_category)
+    data['Sex'] = data['Sex'].apply(lambda x: 1 if x == 'male' else 0)
+    return data
+
+def key_test(features):
+    #train
+
+    data = pd.read_csv("train.csv", header=0)
+    data = data[features + ['Survived']]
+    data = preprocess_data(data)
 
     X_train = data.drop('Survived', axis='columns')
     y_train = data.Survived
 
-    X_train = pd.concat([X_train, pd.get_dummies(X_train.Sex)], axis='columns')
-    X_train.drop(['Sex', 'female'], axis='columns', inplace=True)
-
-    nb = NaiveBayes()
+    nb = NaiveBayesClassifier()
     nb.fit(X_train, y_train)
+
+    #test
 
     test = pd.read_csv("test.csv", header=0)
     test = test[features]
-
-    if 'Embarked' in test.columns:
-        test['Embarked'] = test['Embarked'].apply(embarked_to_num)
-
-    test = pd.concat([test, pd.get_dummies(test.Sex)], axis='columns')
-    test.drop(['Sex', 'female'], axis='columns', inplace=True)
-
-    if 'Age' in test.columns:
-        test['Age'] = test['Age'].fillna(X_train['Age'].mean())
+    test = preprocess_data(test)
 
     predictions = nb.predict(test)
 
@@ -91,20 +106,16 @@ def key_test(features):
     correct = pd.read_csv("correct.csv")
 
     accuracy = accuracy_score(correct['Survived'], test['Survived'])
-    print(f"Dokładność modelu: {accuracy:.4f}")
+    print(f"Accuracy: {accuracy:.4f}\n")
 
 
 def cross_val_test(features):
     data = pd.read_csv("train.csv", header=0)
     data = data[features + ['Survived']]
-
-    if 'Embarked' in data.columns:
-        data['Embarked'] = data['Embarked'].apply(embarked_to_num)
+    data = preprocess_data(data)
 
     X_train = data.drop('Survived', axis='columns')
     y_train = data.Survived
-
-    X_train['Sex'] = X_train['Sex'].apply(lambda x: 1 if x == 'male' else 0)
 
     kf = KFold(n_splits=5, shuffle=True)
 
@@ -114,7 +125,7 @@ def cross_val_test(features):
         X_train_fold, X_val_fold = X_train.iloc[train_idx], X_train.iloc[val_idx]
         y_train_fold, y_val_fold = y_train.iloc[train_idx], y_train.iloc[val_idx]
 
-        nb = NaiveBayes()
+        nb = NaiveBayesClassifier()
         nb.fit(X_train_fold, y_train_fold)
 
         predictions = nb.predict(X_val_fold)
@@ -122,21 +133,17 @@ def cross_val_test(features):
         accuracy_scores.append(accuracy)
 
     mean_accuracy = np.mean(accuracy_scores)
-    print(f"Średnia dokładność w ramach walidacji krzyżowej: {mean_accuracy:.4f}")
+    print(f"Mean cross-validation accuracy: {mean_accuracy:.4f}")
 
 if __name__ == "__main__":
-    # features = ['Sex', 'Fare', 'SibSp', 'Parch', 'Embarked']
-    # features = ['Pclass', 'Sex', 'Fare', 'SibSp', 'Embarked']
-    # features = ['Pclass', 'Sex', 'Fare', 'SibSp', 'Parch']
-    # features = ['Sex', 'Age', 'SibSp', 'Parch', 'Embarked']
-
     features_list = [
-        ['Sex', 'Fare', 'SibSp', 'Parch', 'Embarked'],
-        ['Pclass', 'Sex', 'Fare', 'SibSp', 'Embarked'],
-        ['Pclass', 'Sex', 'Fare', 'SibSp', 'Parch'],
+        ['Pclass', 'Sex', 'Age', 'Parch', 'Embarked'],
+        ['Sex', 'Age', 'Fare', 'SibSp', 'Embarked'],
+        ['Sex', 'Age', 'Fare', 'Parch', 'Embarked'],
         ['Sex', 'Age', 'SibSp', 'Parch', 'Embarked']
     ]
 
     for features in features_list:
-        key_test(features)
+        print(features)
         cross_val_test(features)
+        key_test(features)
