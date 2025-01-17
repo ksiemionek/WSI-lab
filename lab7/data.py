@@ -4,7 +4,7 @@ import pandas as pd
 def discretize_age(age):
     if pd.isna(age):
         return 'unknown'
-    elif age <= 14:
+    elif age <= 20:
         return 'child'
     elif age <= 60:
         return 'adult'
@@ -50,8 +50,8 @@ def discretize_parch(parch):
 
 
 def preprocess_data(data):
-    data['Age_Group'] = data['Age'].apply(discretize_age)
-    data['Fare_Group'] = data['Fare'].apply(discretize_fare)
+    data['Age'] = data['Age'].apply(discretize_age)
+    data['Fare'] = data['Fare'].apply(discretize_fare)
     data['SibSp'] = data['SibSp'].apply(discretize_sibsp)
     data['Parch'] = data['Parch'].apply(discretize_parch)
 

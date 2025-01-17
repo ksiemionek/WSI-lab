@@ -28,24 +28,21 @@ class NaiveBayesClassifier:
         for _, row in X_test.iterrows():
             class_scores = {}
             for class_val in self.class_probs.keys():
-                score = np.log(self.class_probs[class_val])
+                score = self.class_probs[class_val]
                 for feature in X_test:
-                    feature_val = row[feature]
                     prob = self.feature_probs[feature][class_val].get(
-                        feature_val, 0.001
+                        row[feature], 0.001
                     )
-                    score += np.log(prob)
+                    score *= prob
                 class_scores[class_val] = score
 
-            norm_score = sum(np.exp(score) for score in class_scores.values())
+            total_score = sum(class_scores.values())
             probs = {
-                class_val: np.exp(score) / norm_score
+                class_val: class_scores[class_val] / total_score
                 for class_val, score in class_scores.items()
             }
             predictions.append(max(probs, key=probs.get))
-
-        predictions = np.array(predictions)
-        return (predictions >= 0.5).astype(int)
+        return np.array(predictions)
 
 
 def key_test(features):
@@ -125,13 +122,14 @@ def combinations_test():
 if __name__ == "__main__":
     features_list = [
         ['Pclass', 'Sex', 'SibSp', 'Parch', 'Embarked'],
+        ['Sex', 'Age', 'Fare', 'Parch', 'Embarked'],
         ['Age', 'Fare', 'SibSp', 'Parch', 'Embarked']
     ]
 
 
-    # for features in features_list:
-    #     print(features)
-    #     cross_val_test(features)
-    #     key_test(features)
+    for features in features_list:
+        print(features)
+        cross_val_test(features)
+        key_test(features)
 
-    combinations_test()
+    # combinations_test()
