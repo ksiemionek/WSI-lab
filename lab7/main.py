@@ -3,7 +3,7 @@ import pandas as pd
 from itertools import combinations
 from sklearn.model_selection import KFold
 from sklearn.metrics import accuracy_score
-from data import preprocess_data, train_data, test_data
+from data import train_data, test_data
 
 
 class NaiveBayesClassifier:
